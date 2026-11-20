@@ -50,7 +50,7 @@ class EmployeeControllerTestIT extends AbstractIntegrationTest{
                 .uri("/employees")
                 .bodyValue(testEmployeeDto)
                 .exchange()
-                .expectStatus().is5xxServerError();
+                .expectStatus().isEqualTo(409);
     }
 
     @Test
@@ -84,7 +84,7 @@ class EmployeeControllerTestIT extends AbstractIntegrationTest{
                 .uri("/employees/{id}", savedEmployee.getId())
                 .bodyValue(testEmployeeDto)
                 .exchange()
-                .expectStatus().is5xxServerError();
+                .expectStatus().isEqualTo(409);
     }
 
     @Test
@@ -127,7 +127,6 @@ class EmployeeControllerTestIT extends AbstractIntegrationTest{
     }
 
 }
-
 
 
 

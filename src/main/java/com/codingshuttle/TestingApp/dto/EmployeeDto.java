@@ -6,6 +6,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Objects;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 
 @Builder
 @Data
@@ -13,8 +16,12 @@ import java.util.Objects;
 @AllArgsConstructor
 public class EmployeeDto {
     private Long id;
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email must be valid")
     private String email;
+    @NotBlank(message = "Name is required")
     private String name;
+    @PositiveOrZero(message = "Salary must be zero or greater")
     private Long salary;
 
     @Override

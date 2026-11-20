@@ -18,7 +18,8 @@ public class Employee {
     @Column(unique = true)
     private String email;
 
-    private String fullName;
+    @Column(name = "full_name")
+    private String name;
 
     private Long salary;
 
