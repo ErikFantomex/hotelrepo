@@ -2,6 +2,26 @@
 
 Spring Boot API for employee management, backed by PostgreSQL.
 
+## MVP en funcionamiento
+
+La aplicación incluye un frontend Angular responsive conectado a la API y PostgreSQL.
+
+### Demostración
+
+![Demostración del MVP](docs/mvp-demo.gif)
+
+### Vista de escritorio
+
+![Listado responsivo en escritorio](docs/mvp-desktop.png)
+
+### Creación de empleados
+
+![Formulario para crear empleados](docs/mvp-create-form.png)
+
+### Vista móvil
+
+![Interfaz responsive en móvil](docs/mvp-mobile.png)
+
 ## Run with Docker
 
 ```powershell
