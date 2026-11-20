@@ -22,6 +22,13 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final ModelMapper modelMapper;
 
     @Override
+    public List<EmployeeDto> getAllEmployees() {
+        return employeeRepository.findAll().stream()
+                .map(employee -> modelMapper.map(employee, EmployeeDto.class))
+                .toList();
+    }
+
+    @Override
     public EmployeeDto getEmployeeById(Long id) {
         log.info("Fetching employee with id: {}", id);
         Employee employee = employeeRepository.findById(id)

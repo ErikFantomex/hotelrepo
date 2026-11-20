@@ -9,6 +9,7 @@ docker compose up --build
 ```
 
 The API is available at `http://localhost:8080`. PostgreSQL is available at `localhost:5432`.
+The responsive Angular frontend is available at `http://localhost:4201`.
 
 Default local database credentials:
 
