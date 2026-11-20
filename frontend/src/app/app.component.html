@@ -1,125 +1,673 @@
-<main class="app-shell">
-  <header class="topbar">
-    <div>
-      <p class="eyebrow">Hotel operations</p>
-      <h1>Employee Manager</h1>
-    </div>
-    <button class="button button-primary" type="button" (click)="openCreate()">
-      <span aria-hidden="true">+</span>
-      Add employee
-    </button>
-  </header>
-
-  @if (notice) {
-    <div class="notice" [class.notice-error]="noticeType === 'error'" role="status">
-      {{ notice }}
-      <button type="button" aria-label="Dismiss message" (click)="notice = ''">×</button>
+<!-- Toast Notification Center -->
+<aside class="toast-container" aria-live="polite" aria-atomic="true">
+  @for (toast of toasts; track toast.id) {
+    <div class="toast toast-{{ toast.type }}" role="status">
+      <div class="toast-icon">
+        @if (toast.type === 'success') {
+          <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+          </svg>
+        } @else if (toast.type === 'error') {
+          <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+          </svg>
+        } @else {
+          <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+          </svg>
+        }
+      </div>
+      <span class="toast-text">{{ toast.message }}</span>
+      <button type="button" class="toast-close" (click)="dismissToast(toast.id)" aria-label="Dismiss">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
     </div>
   }
+</aside>
 
-  <section class="panel">
-    <div class="toolbar">
-      <label class="search">
-        <span aria-hidden="true">⌕</span>
+<main class="app-layout">
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-badge">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-status">
+            <span class="status-dot" [class.status-offline]="!apiConnected"></span>
+            <span class="status-label">{{ apiConnected ? 'System Online' : 'API Offline' }}</span>
+          </div>
+          <h1 class="brand-title">Employee Portal</h1>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="btn btn-secondary btn-icon"
+        (click)="loadEmployees(true)"
+        [disabled]="loading || refreshing"
+        title="Refresh employee data">
+        <svg [class.spin]="refreshing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        <span class="btn-text">Refresh</span>
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-secondary btn-icon"
+        (click)="exportToCsv()"
+        [disabled]="employees.length === 0"
+        title="Download CSV roster">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span class="btn-text">Export CSV</span>
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-primary btn-icon"
+        (click)="openCreate()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        <span>Add Employee</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- KPI Metrics Overview Grid -->
+  <section class="kpi-grid" aria-label="Key Performance Indicators">
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">Active Team</span>
+        <div class="kpi-icon-wrap icon-blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+      </div>
+      <div class="kpi-value">{{ totalStaffCount }}</div>
+      <div class="kpi-sub">Total registered personnel</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">Annual Payroll</span>
+        <div class="kpi-icon-wrap icon-emerald">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+      </div>
+      <div class="kpi-value">${{ totalPayroll | number:'1.0-0' }}</div>
+      <div class="kpi-sub">~${{ (totalPayroll / 12) | number:'1.0-0' }} / mo expenditure</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">Avg. Compensation</span>
+        <div class="kpi-icon-wrap icon-violet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+            <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="kpi-value">${{ averageSalary | number:'1.0-0' }}</div>
+      <div class="kpi-sub">Mean annual salary per member</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">Top Earner</span>
+        <div class="kpi-icon-wrap icon-amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </div>
+      </div>
+      <div class="kpi-value">
+        @if (topEarner) {
+          ${{ topEarner.salary | number:'1.0-0' }}
+        } @else {
+          -
+        }
+      </div>
+      <div class="kpi-sub truncate">
+        {{ topEarner ? topEarner.name : 'No active records' }}
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Management Panel -->
+  <section class="main-card">
+    <!-- Filter and Search Toolbar -->
+    <div class="table-toolbar">
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
         <input
           type="search"
           [formControl]="searchControl"
-          placeholder="Search name or email"
-          aria-label="Search employees"
+          placeholder="Search by name, email, or ID..."
+          aria-label="Filter employees"
         />
-      </label>
-      <span class="count">{{ filteredEmployees.length }} employee{{ filteredEmployees.length === 1 ? '' : 's' }}</span>
+        @if (searchControl.value) {
+          <button type="button" class="clear-btn" (click)="clearSearch()" aria-label="Clear search input">
+            <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+          </button>
+        }
+      </div>
+
+      <!-- Filter Chips -->
+      <div class="filter-chips">
+        <span class="chips-label">Salary Tier:</span>
+        <button
+          type="button"
+          class="chip"
+          [class.chip-active]="salaryFilter === 'all'"
+          (click)="setSalaryFilter('all')">
+          All
+        </button>
+        <button
+          type="button"
+          class="chip"
+          [class.chip-active]="salaryFilter === 'under50k'"
+          (click)="setSalaryFilter('under50k')">
+          &lt; $50k
+        </button>
+        <button
+          type="button"
+          class="chip"
+          [class.chip-active]="salaryFilter === '50kTo100k'"
+          (click)="setSalaryFilter('50kTo100k')">
+          $50k - $100k
+        </button>
+        <button
+          type="button"
+          class="chip"
+          [class.chip-active]="salaryFilter === 'over100k'"
+          (click)="setSalaryFilter('over100k')">
+          &gt; $100k
+        </button>
+      </div>
+
+      <div class="result-badge">
+        <span>{{ sortedEmployees.length }} matching</span>
+      </div>
     </div>
 
+    <!-- Data Table Container -->
     @if (loading) {
-      <div class="empty-state">
-        <div class="spinner"></div>
-        <p>Loading employees...</p>
+      <div class="state-container">
+        <div class="spinner-ring"></div>
+        <p class="state-title">Loading roster...</p>
+        <p class="state-desc">Connecting to database and fetching staff records.</p>
       </div>
-    } @else if (filteredEmployees.length === 0) {
-      <div class="empty-state">
-        <div class="empty-icon">◎</div>
-        <h2>No employees found</h2>
-        <p>{{ searchControl.value ? 'Try a different search.' : 'Create the first employee to get started.' }}</p>
+    } @else if (sortedEmployees.length === 0) {
+      <div class="state-container">
+        <div class="empty-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="36" height="36">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+        </div>
+        @if (searchControl.value || salaryFilter !== 'all') {
+          <h2 class="state-title">No matching team members</h2>
+          <p class="state-desc">No employees match your search query or salary filter.</p>
+          <button type="button" class="btn btn-secondary mt-3" (click)="resetAllFilters()">
+            Reset all filters
+          </button>
+        } @else {
+          <h2 class="state-title">No employees registered yet</h2>
+          <p class="state-desc">Get started by creating your company's first employee.</p>
+          <button type="button" class="btn btn-primary mt-3" (click)="openCreate()">
+            + Add First Employee
+          </button>
+        }
       </div>
     } @else {
-      <div class="table-wrap">
-        <table>
+      <div class="table-container">
+        <table class="data-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Salary</th>
-              <th><span class="visually-hidden">Actions</span></th>
+              <th scope="col" (click)="setSort('name')" class="sortable-th">
+                <div class="th-content">
+                  <span>Employee</span>
+                  <span class="sort-indicator" [class.active]="sortBy === 'name'">
+                    {{ sortBy === 'name' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}
+                  </span>
+                </div>
+              </th>
+              <th scope="col" (click)="setSort('email')" class="sortable-th">
+                <div class="th-content">
+                  <span>Email Address</span>
+                  <span class="sort-indicator" [class.active]="sortBy === 'email'">
+                    {{ sortBy === 'email' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}
+                  </span>
+                </div>
+              </th>
+              <th scope="col" (click)="setSort('salary')" class="sortable-th text-right">
+                <div class="th-content justify-end">
+                  <span>Annual Salary</span>
+                  <span class="sort-indicator" [class.active]="sortBy === 'salary'">
+                    {{ sortBy === 'salary' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}
+                  </span>
+                </div>
+              </th>
+              <th scope="col" class="text-right">
+                <span>Monthly Est.</span>
+              </th>
+              <th scope="col" class="text-right">
+                <span class="visually-hidden">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            @for (employee of filteredEmployees; track employee.id) {
-              <tr>
+            @for (employee of paginatedEmployees; track employee.id) {
+              <tr class="employee-row" (click)="openView(employee)">
                 <td>
-                  <div class="person">
-                    <span class="avatar">{{ initials(employee.name) }}</span>
-                    <strong>{{ employee.name }}</strong>
+                  <div class="person-cell">
+                    <div
+                      class="avatar"
+                      [style.background-color]="getAvatarTheme(employee.name).bg"
+                      [style.color]="getAvatarTheme(employee.name).text">
+                      {{ getInitials(employee.name) }}
+                    </div>
+                    <div class="person-info">
+                      <span class="person-name">{{ employee.name }}</span>
+                      <span class="person-id">#{{ employee.id }}</span>
+                    </div>
                   </div>
                 </td>
-                <td data-label="Email">{{ employee.email }}</td>
-                <td data-label="Salary">{{ employee.salary | number:'1.0-0' }}</td>
-                <td class="actions">
-                  <button class="icon-button" type="button" (click)="openEdit(employee)" [attr.aria-label]="'Edit ' + employee.name">✎</button>
-                  <button class="icon-button danger" type="button" (click)="deleteEmployee(employee)" [attr.aria-label]="'Delete ' + employee.name">⌫</button>
+                <td data-label="Email">
+                  <span class="email-text">{{ employee.email }}</span>
+                </td>
+                <td data-label="Annual Salary" class="text-right">
+                  <span class="salary-pill">${{ employee.salary | number:'1.0-0' }}</span>
+                </td>
+                <td data-label="Monthly Est." class="text-right text-muted font-mono">
+                  ${{ (employee.salary / 12) | number:'1.0-0' }}/mo
+                </td>
+                <td class="text-right">
+                  <div class="actions-group">
+                    <button
+                      type="button"
+                      class="action-btn"
+                      (click)="openView(employee); $event.stopPropagation()"
+                      title="View Profile"
+                      [attr.aria-label]="'View details for ' + employee.name">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-btn edit-btn"
+                      (click)="openEdit(employee, $event)"
+                      title="Edit Employee"
+                      [attr.aria-label]="'Edit ' + employee.name">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-btn delete-btn"
+                      (click)="openDeleteModal(employee, $event)"
+                      title="Delete Employee"
+                      [attr.aria-label]="'Delete ' + employee.name">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                      </svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
+
+      <!-- Pagination and Page Size Footer -->
+      <footer class="table-footer">
+        <div class="footer-left">
+          <span class="footer-text">
+            Showing <strong>{{ pageStart }}-{{ pageEnd }}</strong> of <strong>{{ sortedEmployees.length }}</strong> employees
+          </span>
+          <div class="page-size-selector">
+            <label for="pageSizeSelect">Rows:</label>
+            <select
+              id="pageSizeSelect"
+              [value]="pageSize"
+              (change)="setPageSize(+$any($event.target).value)">
+              @for (opt of pageSizeOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        @if (totalPages > 1) {
+          <div class="pagination-controls">
+            <button
+              type="button"
+              class="page-btn"
+              [disabled]="currentPage === 1"
+              (click)="goToPage(1)"
+              title="First Page"
+              aria-label="First page">
+              «
+            </button>
+            <button
+              type="button"
+              class="page-btn"
+              [disabled]="currentPage === 1"
+              (click)="goToPage(currentPage - 1)"
+              title="Previous Page"
+              aria-label="Previous page">
+              ‹
+            </button>
+
+            <span class="page-current">Page {{ currentPage }} of {{ totalPages }}</span>
+
+            <button
+              type="button"
+              class="page-btn"
+              [disabled]="currentPage === totalPages"
+              (click)="goToPage(currentPage + 1)"
+              title="Next Page"
+              aria-label="Next page">
+              ›
+            </button>
+            <button
+              type="button"
+              class="page-btn"
+              [disabled]="currentPage === totalPages"
+              (click)="goToPage(totalPages)"
+              title="Last Page"
+              aria-label="Last page">
+              »
+            </button>
+          </div>
+        }
+      </footer>
     }
   </section>
 </main>
 
+<!-- Modal: Add or Edit Employee -->
 @if (formOpen) {
   <div class="backdrop" (mousedown)="closeForm()">
-    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="form-title" (mousedown)="$event.stopPropagation()">
+    <section
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-form-title"
+      (mousedown)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <p class="eyebrow">{{ editingEmployee ? 'Update details' : 'New team member' }}</p>
-          <h2 id="form-title">{{ editingEmployee ? 'Edit employee' : 'Add employee' }}</h2>
+          <span class="modal-badge">{{ editingEmployee ? 'Update Record' : 'Team Onboarding' }}</span>
+          <h2 id="modal-form-title" class="modal-title">
+            {{ editingEmployee ? 'Edit Employee Details' : 'Add New Employee' }}
+          </h2>
         </div>
-        <button class="icon-button" type="button" (click)="closeForm()" aria-label="Close">×</button>
+        <button type="button" class="close-icon-btn" (click)="closeForm()" aria-label="Close modal">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+          </svg>
+        </button>
       </div>
 
-      <form [formGroup]="employeeForm" (ngSubmit)="saveEmployee()" novalidate>
-        <label>
-          Full name
-          <input formControlName="name" placeholder="Alex Morgan" autocomplete="name" />
+      <form [formGroup]="employeeForm" (ngSubmit)="saveEmployee()" novalidate class="modal-body">
+        <!-- Name Field -->
+        <div class="form-group">
+          <label for="empName" class="form-label">
+            Full Legal Name <span class="required-star">*</span>
+          </label>
+          <div class="input-with-icon">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <input
+              id="empName"
+              type="text"
+              formControlName="name"
+              placeholder="e.g. Alex Morgan"
+              autocomplete="name"
+              [class.input-invalid]="controlInvalid('name')"
+            />
+          </div>
           @if (controlInvalid('name')) {
-            <small>Name is required</small>
+            <span class="form-error">{{ getErrorMessage('name') }}</span>
           }
-        </label>
+        </div>
 
-        <label>
-          Email address
-          <input formControlName="email" type="email" placeholder="alex@hotel.com" autocomplete="email" />
+        <!-- Email Field -->
+        <div class="form-group">
+          <label for="empEmail" class="form-label">
+            Work Email Address <span class="required-star">*</span>
+          </label>
+          <div class="input-with-icon">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            <input
+              id="empEmail"
+              type="email"
+              formControlName="email"
+              placeholder="alex.morgan@company.com"
+              autocomplete="email"
+              [class.input-invalid]="controlInvalid('email')"
+            />
+          </div>
           @if (controlInvalid('email')) {
-            <small>Enter a valid email address</small>
+            <span class="form-error">{{ getErrorMessage('email') }}</span>
           }
-        </label>
+        </div>
 
-        <label>
-          Annual salary
-          <input formControlName="salary" type="number" min="0" placeholder="50000" />
+        <!-- Salary Field -->
+        <div class="form-group">
+          <div class="label-with-preview">
+            <label for="empSalary" class="form-label">
+              Annual Salary (USD) <span class="required-star">*</span>
+            </label>
+            @if (employeeForm.controls.salary.value > 0) {
+              <span class="salary-live-est">
+                ~${{ (employeeForm.controls.salary.value / 12) | number:'1.0-0' }}/mo
+              </span>
+            }
+          </div>
+          <div class="input-with-icon">
+            <span class="input-currency">$</span>
+            <input
+              id="empSalary"
+              type="number"
+              min="0"
+              step="1000"
+              formControlName="salary"
+              placeholder="65000"
+              [class.input-invalid]="controlInvalid('salary')"
+            />
+          </div>
           @if (controlInvalid('salary')) {
-            <small>Salary must be zero or greater</small>
+            <span class="form-error">{{ getErrorMessage('salary') }}</span>
           }
-        </label>
 
-        <div class="modal-actions">
-          <button class="button button-secondary" type="button" (click)="closeForm()">Cancel</button>
-          <button class="button button-primary" type="submit" [disabled]="saving">
-            {{ saving ? 'Saving...' : (editingEmployee ? 'Save changes' : 'Create employee') }}
+          <!-- Quick presets -->
+          <div class="presets-row">
+            <span class="presets-label">Presets:</span>
+            @for (preset of salaryPresets; track preset) {
+              <button
+                type="button"
+                class="preset-chip"
+                (click)="applySalaryPreset(preset)">
+                ${{ preset / 1000 }}k
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeForm()" [disabled]="saving">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="saving">
+            @if (saving) {
+              <span class="mini-spinner"></span>
+              <span>Saving...</span>
+            } @else {
+              <span>{{ editingEmployee ? 'Save Changes' : 'Confirm & Create' }}</span>
+            }
           </button>
         </div>
       </form>
     </section>
+  </div>
+}
+
+<!-- Modal: Delete Confirmation -->
+@if (deleteModalOpen && employeeToDelete) {
+  <div class="backdrop" (mousedown)="cancelDelete()">
+    <section
+      class="modal-card modal-delete"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-dialog-title"
+      (mousedown)="$event.stopPropagation()">
+      <div class="delete-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+
+      <h2 id="delete-dialog-title" class="delete-title">Delete Employee Record?</h2>
+      <p class="delete-message">
+        Are you sure you want to remove <strong>{{ employeeToDelete.name }}</strong> ({{ employeeToDelete.email }}) from the team roster?
+        This action permanently removes the record and cannot be undone.
+      </p>
+
+      <div class="modal-footer justify-center">
+        <button type="button" class="btn btn-secondary" (click)="cancelDelete()" [disabled]="deleting">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-danger" (click)="executeDelete()" [disabled]="deleting">
+          @if (deleting) {
+            <span class="mini-spinner"></span>
+            <span>Deleting...</span>
+          } @else {
+            <span>Yes, Delete Record</span>
+          }
+        </button>
+      </div>
+    </section>
+  </div>
+}
+
+<!-- Drawer: Employee Profile Inspector -->
+@if (viewDrawerOpen && selectedEmployee) {
+  <div class="backdrop backdrop-drawer" (mousedown)="closeView()">
+    <aside
+      class="drawer-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
+      (mousedown)="$event.stopPropagation()">
+      <div class="drawer-header">
+        <span class="modal-badge">Profile Overview</span>
+        <button type="button" class="close-icon-btn" (click)="closeView()" aria-label="Close drawer">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="drawer-profile">
+        <div
+          class="drawer-avatar"
+          [style.background-color]="getAvatarTheme(selectedEmployee.name).bg"
+          [style.color]="getAvatarTheme(selectedEmployee.name).text">
+          {{ getInitials(selectedEmployee.name) }}
+        </div>
+        <h3 id="drawer-title" class="drawer-name">{{ selectedEmployee.name }}</h3>
+        <span class="drawer-id">Employee ID #{{ selectedEmployee.id }}</span>
+        <span class="drawer-email">{{ selectedEmployee.email }}</span>
+      </div>
+
+      <div class="drawer-section">
+        <h4 class="drawer-section-title">Compensation Breakdown</h4>
+        <div class="drawer-stat-card">
+          <span class="drawer-stat-label">Annual Base</span>
+          <span class="drawer-stat-val font-mono">${{ selectedEmployee.salary | number:'1.0-0' }}</span>
+        </div>
+        <div class="drawer-stat-grid">
+          <div class="drawer-stat-card">
+            <span class="drawer-stat-label">Monthly Gross</span>
+            <span class="drawer-stat-val font-mono">${{ (selectedEmployee.salary / 12) | number:'1.0-0' }}</span>
+          </div>
+          <div class="drawer-stat-card">
+            <span class="drawer-stat-label">Bi-weekly Gross</span>
+            <span class="drawer-stat-val font-mono">${{ (selectedEmployee.salary / 26) | number:'1.0-0' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="drawer-actions">
+        <button
+          type="button"
+          class="btn btn-secondary w-full"
+          (click)="openEdit(selectedEmployee); closeView()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          <span>Edit Profile</span>
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger-soft w-full"
+          (click)="openDeleteModal(selectedEmployee); closeView()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          <span>Delete Record</span>
+        </button>
+      </div>
+    </aside>
   </div>
 }

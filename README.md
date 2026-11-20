@@ -69,6 +69,14 @@ Example request:
 
 ## Tests
 
+### Backend Tests (Spring Boot & JUnit)
+
 ```powershell
 .\mvnw.cmd test
+```
+
+### Frontend Tests (Angular 19 & Karma)
+
+```powershell
+npm run test:ci --prefix frontend
 ```
